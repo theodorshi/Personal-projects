@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-fog: #eef0f3;
+  --color-ink: #1a1f2b;
+  --color-slate-ink: #4b5566;
+  --color-cobalt: #2a4bdb;
+  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  @apply bg-fog text-ink font-display antialiased;
+}
+
+:focus-visible {
+  @apply outline-3 outline-offset-4 outline-cobalt;
+}
+
+/* Header blir hvit når den ligger over det heldekkende bildet */
+html[data-over-photo="true"] .site-header {
+  @apply text-white bg-transparent backdrop-blur-none;
+}
+
+html[data-over-photo="true"] .cv-button {
+  @apply bg-white text-ink;
+}

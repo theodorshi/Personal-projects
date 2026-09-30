@@ -1,0 +1,15 @@
+# Frontend
+node_modules/
+dist/
+.env.local
+
+# Backend
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+
+# Mac / editor
+.DS_Store
+.vscode/

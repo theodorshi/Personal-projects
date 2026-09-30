@@ -1,0 +1,5 @@
+bin/
+obj/
+# Meldingene fra kontaktskjemaet skal ikke på GitHub
+Databases/*.db
+Databases/*.db-*
