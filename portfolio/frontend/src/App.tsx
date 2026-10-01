@@ -2,6 +2,7 @@ import Header from "./components/Header";
 import Hero from "./components/Hero";
 import ProjectList from "./components/ProjectList";
 import TimelineList from "./components/TimelineList";
+import TechMarquee from "./components/TechMarquee";
 import Contact from "./components/Contact";
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
         <Hero />
         <ProjectList />
         <TimelineList />
+        <TechMarquee />
       </main>
       <Contact />
     </>

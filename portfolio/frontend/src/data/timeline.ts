@@ -35,7 +35,7 @@ export const timeline: ITimelineItem[] = [
     title: "Bachelor i IT: Frontend- og mobilutvikling",
     place: "Høyskolen Kristiania",
     description: "Webutvikling, mobilutvikling og programmering, med prosjekter i både frontend og backend.",
-    skills: ["TypeScript", "React", "C#", "Java", "Kotlin", "Python", "C", "MySQL", "Git"],
+    skills: ["TypeScript", "React", "C#", "Java", "Kotlin", "Swift", "Python", "C", "MySQL", "Git"],
     current: true,
   },
 ];

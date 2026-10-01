@@ -5,6 +5,13 @@
   --color-ink: #1a1f2b;
   --color-slate-ink: #4b5566;
   --color-cobalt: #2a4bdb;
+  --animate-marquee: marquee 40s linear infinite;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
   --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
 }
 

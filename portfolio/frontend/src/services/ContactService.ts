@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { IContactMessage } from "../interfaces/IContactMessage";
 
-const contactEndpoint = "http://localhost:5000/api/contact";
+const contactEndpoint = `${import.meta.env.VITE_API_URL}/api/contact`;
 
 const postMessage = async (newMessage: IContactMessage): Promise<boolean> => {
   try {

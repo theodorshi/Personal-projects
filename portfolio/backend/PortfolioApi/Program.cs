@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PortfolioApi.Contexts;
@@ -24,9 +25,20 @@ builder.Services.AddCors(
 builder.Services.AddControllers();
 builder.Services.AddMemoryCache();
 
-// Database
+// Database: lokalt ligger fila i Databases/, på Azure settes stien i Configuration
+string connectionString = builder.Configuration.GetConnectionString("Portfolio")
+    ?? "Data Source=Databases/Portfolio.db";
+
+// Sørger for at mappa til databasefila finnes
+string databaseFile = new SqliteConnectionStringBuilder(connectionString).DataSource;
+string? databaseFolder = Path.GetDirectoryName(Path.GetFullPath(databaseFile));
+if (!string.IsNullOrEmpty(databaseFolder))
+{
+    Directory.CreateDirectory(databaseFolder);
+}
+
 builder.Services.AddDbContext<PortfolioContext>(
-    options => options.UseSqlite("Data Source=Databases/Portfolio.db")
+    options => options.UseSqlite(connectionString)
 );
 builder.Services.AddScoped<IContactRepository, ContactRepository>();
 
@@ -58,6 +70,13 @@ builder.Services.AddHttpClient<IGitHubRepository, GitHubRepository>((serviceProv
 });
 
 var app = builder.Build();
+
+// Oppretter/oppdaterer databasen automatisk ved oppstart (også på Azure)
+using (var scope = app.Services.CreateScope())
+{
+    PortfolioContext context = scope.ServiceProvider.GetRequiredService<PortfolioContext>();
+    context.Database.Migrate();
+}
 
 app.UseCors("AllowAnyOrigin");
 app.UseRateLimiter();

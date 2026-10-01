@@ -25,7 +25,14 @@ public class GitHubRepository : IGitHubRepository
         [".ts"] = "TypeScript",
         [".tsx"] = "TypeScript",
         [".sql"] = "SQL",
+        [".swift"] = "Swift",
     };
+
+    // Filnavn som ofte er "hovedfila" i et prosjekt, og derfor fine å vise
+    private static readonly string[] PreferredFileNames = { "main", "program", "app", "index" };
+
+    // Linjer i starten av en fil som ikke er interessante å vise
+    private static readonly string[] BoringLinePrefixes = { "import ", "package ", "using ", "#include", "from ", "@file" };
 
     private readonly HttpClient _http;
     private readonly IMemoryCache _cache;
@@ -57,33 +64,49 @@ public class GitHubRepository : IGitHubRepository
             .Select(item => item.Path)
             .ToList();
 
-        var files = tree.Tree
+        var allFiles = tree.Tree
             .Where(item => item.Type == "blob")
-            .Select(item => item.Path)
             .ToList();
 
         var projects = new List<Project>();
 
         foreach (var folder in folders)
         {
-            var folderFiles = files.Where(path => path.StartsWith(folder + "/")).ToList();
+            var folderItems = allFiles.Where(item => item.Path.StartsWith(folder + "/")).ToList();
+            var folderFiles = folderItems.Select(item => item.Path).ToList();
 
-            var languages = folderFiles
+            // Teller filer per språk og regner om til prosent
+            var languageCounts = folderFiles
                 .Select(path => LanguageByExtension.GetValueOrDefault(Path.GetExtension(path)))
                 .Where(language => language is not null)
                 .GroupBy(language => language!)
                 .OrderByDescending(group => group.Count())
-                .Take(3)
-                .Select(group => group.Key)
+                .Select(group => new { Name = group.Key, Count = group.Count() })
                 .ToList();
+
+            int totalCodeFiles = languageCounts.Sum(language => language.Count);
+
+            var languageShares = languageCounts
+                .Take(4)
+                .Select(language => new LanguageShare
+                {
+                    Name = language.Name,
+                    Percent = (int)Math.Round(100.0 * language.Count / totalCodeFiles),
+                })
+                .ToList();
+
+            var (previewFile, codePreview) = await GetCodePreviewAsync(folderItems, languageCounts.FirstOrDefault()?.Name);
 
             projects.Add(new Project
             {
                 Name = folder,
                 Url = $"https://github.com/{_options.Owner}/{_options.Repo}/tree/{_options.Branch}/{Uri.EscapeDataString(folder)}",
-                Languages = languages,
+                Languages = languageShares.Take(3).Select(language => language.Name).ToList(),
+                LanguageShares = languageShares,
                 FileCount = folderFiles.Count,
                 Description = await GetDescriptionAsync(folder, folderFiles),
+                PreviewFile = previewFile,
+                CodePreview = codePreview,
             });
         }
 
@@ -121,6 +144,88 @@ public class GitHubRepository : IGitHubRepository
         }
 
         return $"Skoleprosjekter i {folder}.";
+    }
+
+    // Velger én kodefil i hovedspråket og henter de første interessante linjene
+    private async Task<(string PreviewFile, string CodePreview)> GetCodePreviewAsync(List<GitTreeItem> folderItems, string? mainLanguage)
+    {
+        if (mainLanguage is null)
+        {
+            return (string.Empty, string.Empty);
+        }
+
+        GitTreeItem? chosen = folderItems
+            .Where(item => LanguageByExtension.GetValueOrDefault(Path.GetExtension(item.Path)) == mainLanguage)
+            .Where(item => item.Size is > 300 and < 40000)
+            .OrderByDescending(item => PreferredFileNames.Contains(Path.GetFileNameWithoutExtension(item.Path).ToLowerInvariant()))
+            .ThenBy(item => Math.Abs((item.Size ?? 0) - 3000))
+            .FirstOrDefault();
+
+        if (chosen is null)
+        {
+            return (string.Empty, string.Empty);
+        }
+
+        try
+        {
+            var encodedPath = string.Join("/", chosen.Path.Split('/').Select(Uri.EscapeDataString));
+            var rawUrl = $"https://raw.githubusercontent.com/{_options.Owner}/{_options.Repo}/{_options.Branch}/{encodedPath}";
+            var code = await _http.GetStringAsync(rawUrl);
+            return (Path.GetFileName(chosen.Path), ExtractSnippet(code));
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Fant ikke kodefil {File}", chosen.Path);
+            return (string.Empty, string.Empty);
+        }
+    }
+
+    // Hopper over imports og kommentarer i toppen, og tar med de neste linjene
+    private static string ExtractSnippet(string code, int maxLines = 16)
+    {
+        var lines = code.Replace("\r", "").Replace("\t", "    ").Split('\n');
+        var result = new List<string>();
+        var inBlockComment = false;
+        var started = false;
+
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+
+            if (!started)
+            {
+                if (inBlockComment)
+                {
+                    if (trimmed.Contains("*/"))
+                    {
+                        inBlockComment = false;
+                    }
+                    continue;
+                }
+
+                if (trimmed.StartsWith("/*"))
+                {
+                    inBlockComment = !trimmed.Contains("*/");
+                    continue;
+                }
+
+                if (trimmed.Length == 0 || BoringLinePrefixes.Any(prefix => trimmed.StartsWith(prefix)))
+                {
+                    continue;
+                }
+
+                started = true;
+            }
+
+            result.Add(line.Length > 72 ? line[..71] + "…" : line);
+
+            if (result.Count >= maxLines)
+            {
+                break;
+            }
+        }
+
+        return string.Join("\n", result).TrimEnd();
     }
 
     // Plukker ut første vanlige tekstavsnitt fra en README (hopper over overskrifter, bilder og kode)

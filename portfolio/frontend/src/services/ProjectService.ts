@@ -1,7 +1,8 @@
 import axios from "axios";
 import type { IProject } from "../interfaces/IProject";
 
-const endpoint = "http://localhost:5000/api/projects";
+// Adressen til backend settes i .env-filer (lokalt) og i Vercel (på nett)
+const endpoint = `${import.meta.env.VITE_API_URL}/api/projects`;
 
 const getAll = async (): Promise<IProject[] | null> => {
   try {
