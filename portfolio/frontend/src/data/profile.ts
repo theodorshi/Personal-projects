@@ -9,7 +9,7 @@ export const profile: IProfile = {
   photo: "images/IMG_0870.jpg", // stående portrett i public/images/
   backgroundPhoto: "images/image.png", // liggende bilde i public/images/
   cv: "/cv/Theodor-Raaberg-CV.pdf",
-  linkedin: "https://www.linkedin.com/in/theodor",
+  linkedin: "https://www.linkedin.com/in/theodor-raaberg/",
   github: "https://github.com/theodorshi",
   email: "theodor.raaberg@gmail.com",
 };
