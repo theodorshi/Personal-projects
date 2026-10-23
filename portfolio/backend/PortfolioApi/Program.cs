@@ -7,6 +7,7 @@ using PortfolioApi.Contexts;
 using PortfolioApi.Interfaces;
 using PortfolioApi.Models;
 using PortfolioApi.Repositories;
+using PortfolioApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +42,9 @@ builder.Services.AddDbContext<PortfolioContext>(
     options => options.UseSqlite(connectionString)
 );
 builder.Services.AddScoped<IContactRepository, ContactRepository>();
+// E-postvarsel når noen bruker kontaktskjemaet
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Maks 10 meldinger per 10. minutt til sammen, så ingen kan fylle opp databasen
 builder.Services.AddRateLimiter(options =>

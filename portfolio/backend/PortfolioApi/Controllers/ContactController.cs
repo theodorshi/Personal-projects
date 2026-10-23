@@ -7,7 +7,11 @@ namespace PortfolioApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ContactController(IContactRepository _contactRepository, IWebHostEnvironment _environment) : ControllerBase
+public class ContactController(
+    IContactRepository _contactRepository,
+    IEmailService _emailService,
+    IWebHostEnvironment _environment,
+    ILogger<ContactController> _logger) : ControllerBase
 {
     // Alle kan sende en melding (med en grense mot spam)
     [HttpPost]
@@ -21,6 +25,18 @@ public class ContactController(IContactRepository _contactRepository, IWebHostEn
             newMessage.CreatedAt = DateTime.UtcNow;
 
             ContactMessage savedMessage = await _contactRepository.AddAsync(newMessage);
+
+            // Sender e-post til deg. Feiler e-posten, er meldingen likevel lagret i databasen,
+            // så den som skrev får fortsatt beskjed om at alt gikk bra.
+            try
+            {
+                await _emailService.SendContactNotificationAsync(savedMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Klarte ikke å sende e-post for melding {Id}", savedMessage.Id);
+            }
+
             return CreatedAtAction(nameof(GetById), new { id = savedMessage.Id }, savedMessage);
         }
         catch (Exception)
